@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MPLADS-Drishti | एमपिलाड्स दृष्टि — AI Audit & Analytics</title>
+<meta name="description" content="AI-powered audit and analytics platform for MPLAD Scheme — Smart India Hackathon 26102" />
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Leaflet Map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          navy:    { DEFAULT:'#0F172A', 50:'#F1F5F9', 700:'#1E293B', 800:'#0F172A', 900:'#020617' },
+          slate7:  '#334155',
+          crimson: '#DC2626',
+          amber7:  '#D97706',
+          emerald6:'#059669',
+          saffron: '#F59E0B',
+        },
+        fontFamily: {
+          sans: ['Inter','system-ui','sans-serif'],
+          hindi: ['Noto Sans Devanagari','Inter','sans-serif'],
+        },
+        animation: {
+          'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          'fade-in': 'fadeIn .4s ease-out',
+          'slide-up': 'slideUp .5s ease-out',
+        },
+        keyframes: {
+          fadeIn: { '0%':{opacity:0}, '100%':{opacity:1} },
+          slideUp: { '0%':{transform:'translateY(20px)',opacity:0}, '100%':{transform:'translateY(0)',opacity:1} }
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
+
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter','Noto Sans Devanagari',system-ui,sans-serif; }
+  .hindi-text { font-family: 'Noto Sans Devanagari','Inter',sans-serif; }
+
+  /* Glassmorphism */
+  .glass {
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+  .dark .glass {
+    background: rgba(15,23,42,0.7);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* Tricolor accent bar */
+  .tricolor-bar {
+    background: linear-gradient(90deg, #FF9933 0%, #FF9933 33%, #FFFFFF 33%, #FFFFFF 66%, #138808 66%, #138808 100%);
+    height: 4px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+  .dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+  /* Risk meter */
+  .risk-meter {
+    background: conic-gradient(
+      from 180deg,
+      #059669 0deg 72deg,
+      #D97706 72deg 144deg,
+      #DC2626 144deg 180deg,
+      transparent 180deg
+    );
+  }
+
+  /* Map pin pulse */
+  .pin-pulse::after {
+    content:''; position:absolute; inset:-6px; border-radius:50%;
+    background: inherit; opacity:.4; animation: pulse 2s infinite;
+  }
+
+  /* Badge glow */
+  .badge-critical { box-shadow: 0 0 0 0 rgba(220,38,38,.7); animation: badgePulse 2s infinite; }
+  @keyframes badgePulse {
+    0%   { box-shadow: 0 0 0 0 rgba(220,38,38,.6); }
+    70%  { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+    100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+  }
+
+  /* Leaflet dark tiles */
+  .dark .leaflet-tile { filter: brightness(0.7) invert(1) contrast(0.9) hue-rotate(200deg) saturate(0.4) brightness(0.9); }
+
+  /* Table row hover */
+  .audit-row { transition: all .15s ease; }
+  .audit-row:hover { transform: translateX(2px); }
+
+  /* Modal */
+  .modal-backdrop { background: rgba(2,6,23,.7); backdrop-filter: blur(4px); }
+
+  /* Hide role sections by default */
+  .role-section { display: none; }
+  .role-section.active { display: block; animation: fadeIn .4s ease-out; }
+
+  /* Stat card gradient borders */
+  .stat-card { position: relative; overflow: hidden; }
+  .stat-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    background: var(--accent, #F59E0B);
+  }
+</style>
+</head>
+
+<body class="bg-slate-50 dark:bg-navy-900 text-slate-800 dark:text-slate-100 transition-colors duration-300">
+
+<!-- ===================== TRICOLOR TOP BAR ===================== -->
+<div class="tricolor-bar"></div>
+
+<!-- ===================== HEADER / NAV ===================== -->
+<header class="sticky top-0 z-40 glass shadow-sm">
+  <div class="max-w-[1600px] mx-auto px-4 lg:px-6">
+    <div class="flex items-center justify-between h-16">
+
+      <!-- Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-saffron via-white to-emerald6 flex items-center justify-center shadow-lg ring-1 ring-slate-200 dark:ring-slate-700">
+          <i data-lucide="shield-check" class="w-5 h-5 text-navy"></i>
+        </div>
+        <div>
+          <h1 class="text-base lg:text-lg font-bold tracking-tight" data-i18n="app.title">MPLADS-Drishti</h1>
+          <p class="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400 -mt-0.5" data-i18n="app.subtitle">AI Audit & Analytics • MoSPI</p>
+        </div>
+      </div>
+
+      <!-- Role Tabs (desktop) -->
+      <nav class="hidden lg:flex items-center gap-1 bg-slate-100 dark:bg-navy-700 rounded-xl p-1">
+        <button data-role="mospi" class="role-tab px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition">
+          <i data-lucide="landmark" class="w-3.5 h-3.5"></i><span data-i18n="role.mospi">MoSPI / Central</span>
+        </button>
+        <button data-role="mp" class="role-tab px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition">
+          <i data-lucide="user" class="w-3.5 h-3.5"></i><span data-i18n="role.mp">Member of Parliament</span>
+        </button>
+        <button data-role="district" class="role-tab px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition">
+          <i data-lucide="building-2" class="w-3.5 h-3.5"></i><span data-i18n="role.district">District Authority</span>
+        </button>
+      </nav>
+
+      <!-- Controls -->
+      <div class="flex items-center gap-2">
+        <!-- Language Toggle -->
+        <div class="flex items-center bg-slate-100 dark:bg-navy-700 rounded-lg p-0.5">
+          <button id="langEn" class="px-2 py-1 text-xs font-semibold rounded-md transition">EN</button>
+          <button id="langHi" class="px-2 py-1 text-xs font-semibold rounded-md transition">हिं</button>
+        </div>
+        <!-- Theme Toggle -->
+        <button id="themeToggle" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-navy-700 transition" title="Toggle theme">
+          <i data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
+          <i data-lucide="moon" class="w-4 h-4 block dark:hidden"></i>
+        </button>
+        <!-- Mobile role menu -->
+        <button id="mobileRoleBtn" class="lg:hidden p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-navy-700">
+          <i data-lucide="menu" class="w-4 h-4"></i>
+        </button>
+        <!-- User avatar -->
+        <div class="hidden md:flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-700">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-saffron to-crimson flex items-center justify-center text-white font-bold text-xs">AD</div>
+          <div class="hidden xl:block">
+            <p class="text-xs font-semibold">Audit Director</p>
+            <p class="text-[10px] text-slate-500">MoSPI • L5</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile role menu -->
+    <div id="mobileRoleMenu" class="lg:hidden hidden pb-3 flex-col gap-1">
+      <button data-role="mospi" class="role-tab w-full text-left px-3 py-2 text-sm rounded-lg">🏛️ <span data-i18n="role.mospi">MoSPI / Central</span></button>
+      <button data-role="mp" class="role-tab w-full text-left px-3 py-2 text-sm rounded-lg">👤 <span data-i18n="role.mp">Member of Parliament</span></button>
+      <button data-role="district" class="role-tab w-full text-left px-3 py-2 text-sm rounded-lg">🏢 <span data-i18n="role.district">District Authority</span></button>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== MAIN ===================== -->
+<main class="max-w-[1600px] mx-auto px-4 lg:px-6 py-6 space-y-6">
+
+  <!-- ============ ROLE CONTEXT BANNER ============ -->
+  <section id="roleBanner" class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-navy via-navy-700 to-slate7 text-white p-6 shadow-xl">
+    <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle at 20% 30%, #F59E0B 0%, transparent 40%), radial-gradient(circle at 80% 70%, #059669 0%, transparent 40%);"></div>
+    <div class="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-saffron/20 text-saffron border border-saffron/30" data-i18n="role.current">CURRENT VIEW</span>
+          <span class="text-xs text-slate-300" id="roleTimestamp">Sat, 19 Sep 2026 • 09:42 IST</span>
+        </div>
+        <h2 class="text-2xl lg:text-3xl font-bold" id="roleTitle" data-i18n="role.mospi.title">Central Ministry Oversight Dashboard</h2>
+        <p class="text-sm text-slate-300 mt-1 max-w-2xl" id="roleDesc" data-i18n="role.mospi.desc">National-level AI-driven anomaly detection across all MPLADS constituencies. Monitor fund leakage, ghost projects, and duplicate billing in real-time.</p>
+      </div>
+      <div class="flex gap-3">
+        <button onclick="openModal('auditReportModal')" class="px-4 py-2.5 bg-saffron hover:bg-amber-500 text-navy font-semibold rounded-xl text-sm flex items-center gap-2 shadow-lg transition">
+          <i data-lucide="file-down" class="w-4 h-4"></i><span data-i18n="action.downloadReport">Download Audit Report</span>
+        </button>
+        <button onclick="openModal('grievanceModal')" class="px-4 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 font-semibold rounded-xl text-sm flex items-center gap-2 transition">
+          <i data-lucide="megaphone" class="w-4 h-4"></i><span data-i18n="action.raiseGrievance">Raise Grievance</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ROLE: MOSPI ============ -->
+  <section id="role-mospi" class="role-section active space-y-6">
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="stat-card glass rounded-2xl p-5 shadow-sm" style="--accent:#DC2626">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500 dark:text-slate-400" data-i18n="kpi.flagged">Flagged Anomalies</span>
+          <div class="w-9 h-9 rounded-lg bg-crimson/10 flex items-center justify-center"><i data-lucide="alert-triangle" class="w-4 h-4 text-crimson"></i></div>
+        </div>
+        <p class="text-3xl font-bold mt-2">1,247</p>
+        <p class="text-xs text-crimson font-semibold mt-1">▲ 12.4% <span class="text-slate-500 font-normal" data-i18n="kpi.vsLastMonth">vs last month</span></p>
+      </div>
+      <div class="stat-card glass rounded-2xl p-5 shadow-sm" style="--accent:#059669">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500 dark:text-slate-400" data-i18n="kpi.utilization">Fund Utilization Rate</span>
+          <div class="w-9 h-9 rounded-lg bg-emerald6/10 flex items-center justify-center"><i data-lucide="trending-up" class="w-4 h-4 text-emerald6"></i></div>
+        </div>
+        <p class="text-3xl font-bold mt-2">68.3<span class="text-lg">%</span></p>
+        <p class="text-xs text-emerald6 font-semibold mt-1">▲ 4.1% <span class="text-slate-500 font-normal" data-i18n="kpi.qoq">QoQ</span></p>
+      </div>
+      <div class="stat-card glass rounded-2xl p-5 shadow-sm" style="--accent:#D97706">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500 dark:text-slate-400" data-i18n="kpi.duplicate">Suspected Duplicate Projects</span>
+          <div class="w-9 h-9 rounded-lg bg-amber7/10 flex items-center justify-center"><i data-lucide="copy" class="w-4 h-4 text-amber7"></i></div>
+        </div>
+        <p class="text-3xl font-bold mt-2">342</p>
+        <p class="text-xs text-amber7 font-semibold mt-1">₹18.4 Cr <span class="text-slate-500 font-normal" data-i18n="kpi.atRisk">at risk</span></p>
+      </div>
+      <div class="stat-card glass rounded-2xl p-5 shadow-sm" style="--accent:#F59E0B">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500 dark:text-slate-400" data-i18n="kpi.ghost">Ghost Projects Flagged</span>
+          <div class="w-9 h-9 rounded-lg bg-saffron/10 flex items-center justify-center"><i data-lucide="ghost" class="w-4 h-4 text-saffron"></i></div>
+        </div>
+        <p class="text-3xl font-bold mt-2">89</p>
+        <p class="text-xs text-saffron font-semibold mt-1">₹6.2 Cr <span class="text-slate-500 font-normal" data-i18n="kpi.potentialLoss">potential loss</span></p>
+      </div>
+    </div>
+
+    <!-- AI Risk Scorecards -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- Duplicate Billing -->
+      <div class="glass rounded-2xl p-5 shadow-sm">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-crimson/10 flex items-center justify-center"><i data-lucide="copy" class="w-5 h-5 text-crimson"></i></div>
+            <div>
+              <h3 class="font-bold" data-i18n="ai.duplicate.title">Duplicate Billing Detection</h3>
+              <p class="text-xs text-slate-500" data-i18n="ai.duplicate.desc">Identical works billed across adjacent FYs</p>
+            </div>
+          </div>
+          <span class="px-2 py-1 text-[10px] font-bold rounded-full bg-crimson text-white badge-critical">CRITICAL</span>
+        </div>
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">Detected</p><p class="text-xl font-bold text-crimson">342</p></div>
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">Value</p><p class="text-xl font-bold">₹18.4Cr</p></div>
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">States</p><p class="text-xl font-bold">14</p></div>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 dark:text-slate-400"><i data-lucide="info" class="w-3 h-3 inline"></i> <span data-i18n="ai.duplicate.insight">AI matched 342 work orders with >92% similarity in scope, location & vendor.</span></div>
+      </div>
+
+      <!-- Ghost Projects -->
+      <div class="glass rounded-2xl p-5 shadow-sm">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-saffron/10 flex items-center justify-center"><i data-lucide="ghost" class="w-5 h-5 text-saffron"></i></div>
+            <div>
+              <h3 class="font-bold" data-i18n="ai.ghost.title">Ghost / Dead Project Flag</h3>
+              <p class="text-xs text-slate-500" data-i18n="ai.ghost.desc">Marked 'Completed' but zero geo-tagged proof</p>
+            </div>
+          </div>
+          <span class="px-2 py-1 text-[10px] font-bold rounded-full bg-crimson text-white badge-critical">CRITICAL</span>
+        </div>
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">Flagged</p><p class="text-xl font-bold text-saffron">89</p></div>
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">Value</p><p class="text-xl font-bold">₹6.2Cr</p></div>
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">Avg Age</p><p class="text-xl font-bold">247d</p></div>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 dark:text-slate-400"><i data-lucide="info" class="w-3 h-3 inline"></i> <span data-i18n="ai.ghost.insight">Satellite + geo-tag analysis confirms no physical progress on 89 sites.</span></div>
+      </div>
+
+      <!-- Cost Inflation -->
+      <div class="glass rounded-2xl p-5 shadow-sm">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber7/10 flex items-center justify-center"><i data-lucide="indian-rupee" class="w-5 h-5 text-amber7"></i></div>
+            <div>
+              <h3 class="font-bold" data-i18n="ai.cost.title">Cost Inflation Index</h3>
+              <p class="text-xs text-slate-500" data-i18n="ai.cost.desc">Per-unit cost vs state benchmark deviation</p>
+            </div>
+          </div>
+          <span class="px-2 py-1 text-[10px] font-bold rounded-full bg-amber7 text-white">HIGH</span>
+        </div>
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">Inflated</p><p class="text-xl font-bold text-amber7">512</p></div>
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">Avg Δ</p><p class="text-xl font-bold">+38%</p></div>
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">Top State</p><p class="text-xl font-bold">UP</p></div>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 dark:text-slate-400"><i data-lucide="info" class="w-3 h-3 inline"></i> <span data-i18n="ai.cost.insight">512 projects exceed state PWD schedule of rates by >25%.</span></div>
+      </div>
+
+      <!-- Unspent Funds -->
+      <div class="glass rounded-2xl p-5 shadow-sm">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald6/10 flex items-center justify-center"><i data-lucide="clock" class="w-5 h-5 text-emerald6"></i></div>
+            <div>
+              <h3 class="font-bold" data-i18n="ai.unspent.title">Unspent Fund Stagnation</h3>
+              <p class="text-xs text-slate-500" data-i18n="ai.unspent.desc">Idle funds >180 days in bank accounts</p>
+            </div>
+          </div>
+          <span class="px-2 py-1 text-[10px] font-bold rounded-full bg-emerald6 text-white">MEDIUM</span>
+        </div>
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">MPs</p><p class="text-xl font-bold text-emerald6">167</p></div>
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">Idle</p><p class="text-xl font-bold">₹94Cr</p></div>
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">Avg Days</p><p class="text-xl font-bold">214</p></div>
+        </div>
+        <div class="mt-3 text-xs text-slate-600 dark:text-slate-400"><i data-lucide="info" class="w-3 h-3 inline"></i> <span data-i18n="ai.unspent.insight">167 MPs have >50% of annual allocation unutilized for 180+ days.</span></div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 glass rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-bold" data-i18n="chart.fund.title">Fund Flow: Sanctioned vs Released vs Utilized</h3>
+            <p class="text-xs text-slate-500" data-i18n="chart.fund.desc">Top 10 constituencies by allocation (FY 2025-26)</p>
+          </div>
+          <select class="text-xs bg-slate-100 dark:bg-navy-700 rounded-lg px-2 py-1 border-0">
+            <option>FY 2025-26</option><option>FY 2024-25</option><option>FY 2023-24</option>
+          </select>
+        </div>
+        <div class="h-72"><canvas id="fundFlowChart"></canvas></div>
+      </div>
+
+      <div class="glass rounded-2xl p-5 shadow-sm">
+        <h3 class="font-bold mb-1" data-i18n="chart.category.title">Category Breakdown</h3>
+        <p class="text-xs text-slate-500 mb-4" data-i18n="chart.category.desc">Projects by sector</p>
+        <div class="h-56"><canvas id="categoryChart"></canvas></div>
+        <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-saffron"></span><span data-i18n="cat.water">Drinking Water</span> <span class="ml-auto font-semibold">28%</span></div>
+          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald6"></span><span data-i18n="cat.sanitation">Sanitation</span> <span class="ml-auto font-semibold">22%</span></div>
+          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-crimson"></span><span data-i18n="cat.roads">Rural Roads</span> <span class="ml-auto font-semibold">25%</span></div>
+          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-sky-500"></span><span data-i18n="cat.halls">Community Halls</span> <span class="ml-auto font-semibold">15%</span></div>
+          <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-violet-500"></span><span data-i18n="cat.other">Other</span> <span class="ml-auto font-semibold">10%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State Rankings + Risk Meter -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 glass rounded-2xl p-5 shadow-sm">
+        <h3 class="font-bold mb-4" data-i18n="ranking.title">State Anomaly Rankings</h3>
+        <div class="space-y-3" id="stateRankings"></div>
+      </div>
+
+      <div class="glass rounded-2xl p-5 shadow-sm flex flex-col">
+        <h3 class="font-bold mb-2" data-i18n="riskmeter.title">National AI Risk Meter</h3>
+        <p class="text-xs text-slate-500 mb-4" data-i18n="riskmeter.desc">Aggregate risk score across all constituencies</p>
+        <div class="flex-1 flex items-center justify-center">
+          <div class="relative w-52 h-52">
+            <div class="absolute inset-0 rounded-full risk-meter"></div>
+            <div class="absolute inset-3 rounded-full bg-white dark:bg-navy-800 flex items-center justify-center flex-col">
+              <p class="text-4xl font-bold text-crimson">72</p>
+              <p class="text-xs text-slate-500 font-semibold" data-i18n="riskmeter.score">RISK SCORE</p>
+              <p class="text-[10px] text-crimson font-bold mt-1" data-i18n="riskmeter.level">HIGH RISK</p>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2 mt-4 text-center text-xs">
+          <div class="bg-emerald6/10 rounded-lg p-2"><p class="font-bold text-emerald6">23%</p><p class="text-slate-500">Low</p></div>
+          <div class="bg-amber7/10 rounded-lg p-2"><p class="font-bold text-amber7">38%</p><p class="text-slate-500">Medium</p></div>
+          <div class="bg-crimson/10 rounded-lg p-2"><p class="font-bold text-crimson">39%</p><p class="text-slate-500">High</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map -->
+    <div class="glass rounded-2xl p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h3 class="font-bold" data-i18n="map.title">Geospatial Project Tracker & Satellite Audit</h3>
+          <p class="text-xs text-slate-500" data-i18n="map.desc">Click any pin to view project details, geo-tagged photos, and AI verdict</p>
+        </div>
+        <div class="flex gap-2 text-xs">
+          <span class="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald6/10"><span class="w-2 h-2 rounded-full bg-emerald6"></span><span data-i18n="map.legend.complete">Verified Complete</span></span>
+          <span class="flex items-center gap-1 px-2 py-1 rounded-full bg-sky-500/10"><span class="w-2 h-2 rounded-full bg-sky-500"></span><span data-i18n="map.legend.progress">In Progress</span></span>
+          <span class="flex items-center gap-1 px-2 py-1 rounded-full bg-crimson/10"><span class="w-2 h-2 rounded-full bg-crimson"></span><span data-i18n="map.legend.risk">High AI Risk</span></span>
+        </div>
+      </div>
+      <div id="projectMap" class="h-[480px] rounded-xl overflow-hidden"></div>
+    </div>
+
+    <!-- Anomaly Table -->
+    <div class="glass rounded-2xl p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h3 class="font-bold" data-i18n="table.title">Flagged Anomalies Register</h3>
+          <p class="text-xs text-slate-500"><span data-i18n="table.desc">Real-time AI-flagged cases requiring audit action</span> • <span id="tableCount">0</span> <span data-i18n="table.records">records</span></p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <input id="tableSearch" type="text" placeholder="Search project/vendor..." class="text-xs bg-slate-100 dark:bg-navy-700 rounded-lg px-3 py-1.5 border-0 w-48" />
+          <select id="tableSeverity" class="text-xs bg-slate-100 dark:bg-navy-700 rounded-lg px-2 py-1.5 border-0">
+            <option value="all">All Severity</option>
+            <option value="Critical">Critical</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+          </select>
+          <button onclick="exportTableCSV()" class="text-xs bg-navy hover:bg-navy-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i>CSV</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-slate-500 border-b border-slate-200 dark:border-slate-700">
+              <th class="py-2 px-2 font-semibold" data-i18n="table.col.severity">Severity</th>
+              <th class="py-2 px-2 font-semibold" data-i18n="table.col.projectId">Project ID</th>
+              <th class="py-2 px-2 font-semibold" data-i18n="table.col.type">Anomaly Type</th>
+              <th class="py-2 px-2 font-semibold" data-i18n="table.col.constituency">Constituency</th>
+              <th class="py-2 px-2 font-semibold" data-i18n="table.col.vendor">Vendor</th>
+              <th class="py-2 px-2 font-semibold" data-i18n="table.col.amount">Amount</th>
+              <th class="py-2 px-2 font-semibold" data-i18n="table.col.action">Action</th>
+            </tr>
+          </thead>
+          <tbody id="anomalyTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ROLE: MP ============ -->
+  <section id="role-mp" class="role-section space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 glass rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-saffron to-crimson flex items-center justify-center text-white text-xl font-bold">RS</div>
+          <div>
+            <h3 class="text-xl font-bold">Shri Rajesh Sharma</h3>
+            <p class="text-xs text-slate-500">MP • Varanasi (Lok Sabha) • BJP • 3rd Term</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3 mt-4">
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-xl p-3"><p class="text-xs text-slate-500">Annual Allocation</p><p class="text-2xl font-bold">₹5.00 Cr</p></div>
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-xl p-3"><p class="text-xs text-slate-500">Utilized</p><p class="text-2xl font-bold text-emerald6">₹3.42 Cr</p></div>
+          <div class="bg-slate-50 dark:bg-navy-700 rounded-xl p-3"><p class="text-xs text-slate-500">Balance</p><p class="text-2xl font-bold text-amber7">₹1.58 Cr</p></div>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl p-5 shadow-sm">
+        <h3 class="font-bold mb-3" data-i18n="mp.myProjects">My Constituency Projects</h3>
+        <div class="space-y-2">
+          <div class="flex justify-between text-sm"><span data-i18n="mp.total">Total Sanctioned</span><span class="font-bold">47</span></div>
+          <div class="flex justify-between text-sm"><span data-i18n="mp.completed">Completed</span><span class="font-bold text-emerald6">31</span></div>
+          <div class="flex justify-between text-sm"><span data-i18n="mp.ongoing">Ongoing</span><span class="font-bold text-sky-500">12</span></div>
+          <div class="flex justify-between text-sm"><span data-i18n="mp.flagged">AI-Flagged</span><span class="font-bold text-crimson">4</span></div>
+        </div>
+        <div class="mt-4 h-2 bg-slate-200 dark:bg-navy-700 rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-emerald6 to-saffron" style="width:68%"></div>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">68% <span data-i18n="mp.utilization">utilization</span></p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="glass rounded-2xl p-5 shadow-sm">
+        <h3 class="font-bold mb-4" data-i18n="mp.sanctionStatus">Sanction Status Timeline</h3>
+        <div class="h-64"><canvas id="mpTimelineChart"></canvas></div>
+      </div>
+      <div class="glass rounded-2xl p-5 shadow-sm">
+        <h3 class="font-bold mb-4" data-i18n="mp.predictedCompletion">AI Predicted Completion</h3>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-navy-700 rounded-lg">
+            <div><p class="font-semibold text-sm">Rural Road - Pindara to Saraiya</p><p class="text-xs text-slate-500">₹45 Lakh • In Progress</p></div>
+            <div class="text-right"><p class="text-xs text-emerald6 font-bold">On Track</p><p class="text-[10px] text-slate-500">Dec 2026</p></div>
+          </div>
+          <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-navy-700 rounded-lg">
+            <div><p class="font-semibold text-sm">Community Hall - Bhelupur</p><p class="text-xs text-slate-500">₹28 Lakh • In Progress</p></div>
+            <div class="text-right"><p class="text-xs text-amber7 font-bold">Delayed</p><p class="text-[10px] text-slate-500">Feb 2027</p></div>
+          </div>
+          <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-navy-700 rounded-lg">
+            <div><p class="font-semibold text-sm">RO Plant - Lohta</p><p class="text-xs text-slate-500">₹18 Lakh • In Progress</p></div>
+            <div class="text-right"><p class="text-xs text-crimson font-bold">Critical</p><p class="text-[10px] text-slate-500">Jun 2027</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass rounded-2xl p-5 shadow-sm">
+      <h3 class="font-bold mb-4" data-i18n="mp.myFlagged">My Flagged Projects (Require Attention)</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-slate-500 border-b border-slate-200 dark:border-slate-700">
+              <th class="py-2 px-2">Project</th><th class="py-2 px-2">Issue</th><th class="py-2 px-2">Amount</th><th class="py-2 px-2">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="audit-row border-b border-slate-100 dark:border-slate-800"><td class="py-3 px-2">CC Road - Shivpur Ward 7</td><td class="py-3 px-2"><span class="px-2 py-0.5 text-[10px] rounded-full bg-crimson text-white">Duplicate Billing</span></td><td class="py-3 px-2">₹22L</td><td class="py-3 px-2"><button class="text-xs text-saffron hover:underline">Respond →</button></td></tr>
+            <tr class="audit-row border-b border-slate-100 dark:border-slate-800"><td class="py-3 px-2">Hand Pump - Kotwa</td><td class="py-3 px-2"><span class="px-2 py-0.5 text-[10px] rounded-full bg-saffron text-white">No Geo-tag</span></td><td class="py-3 px-2">₹3.2L</td><td class="py-3 px-2"><button class="text-xs text-saffron hover:underline">Upload Proof →</button></td></tr>
+            <tr class="audit-row border-b border-slate-100 dark:border-slate-800"><td class="py-3 px-2">School Building - Ramnagar</td><td class="py-3 px-2"><span class="px-2 py-0.5 text-[10px] rounded-full bg-amber7 text-white">Cost +42%</span></td><td class="py-3 px-2">₹38L</td><td class="py-3 px-2"><button class="text-xs text-saffron hover:underline">Justify →</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ROLE: DISTRICT ============ -->
+  <section id="role-district" class="role-section space-y-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="stat-card glass rounded-2xl p-5 shadow-sm" style="--accent:#059669">
+        <p class="text-xs text-slate-500">Inspections This Month</p>
+        <p class="text-3xl font-bold mt-2">142</p>
+        <p class="text-xs text-emerald6 font-semibold mt-1">▲ 18%</p>
+      </div>
+      <div class="stat-card glass rounded-2xl p-5 shadow-sm" style="--accent:#F59E0B">
+        <p class="text-xs text-slate-500">Pending Verifications</p>
+        <p class="text-3xl font-bold mt-2">37</p>
+        <p class="text-xs text-amber7 font-semibold mt-1">SLA: 7 days</p>
+      </div>
+      <div class="stat-card glass rounded-2xl p-5 shadow-sm" style="--accent:#DC2626">
+        <p class="text-xs text-slate-500">Contractor Blacklisted</p>
+        <p class="text-3xl font-bold mt-2">6</p>
+        <p class="text-xs text-crimson font-semibold mt-1">Active</p>
+      </div>
+      <div class="stat-card glass rounded-2xl p-5 shadow-sm" style="--accent:#3b82f6">
+        <p class="text-xs text-slate-500">Geo-tag Compliance</p>
+        <p class="text-3xl font-bold mt-2">91<span class="text-lg">%</span></p>
+        <p class="text-xs text-sky-500 font-semibold mt-1">▲ 6%</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="glass rounded-2xl p-5 shadow-sm">
+        <h3 class="font-bold mb-4">Recent Inspection Logs</h3>
+        <div class="space-y-3">
+          <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-navy-700 rounded-lg">
+            <div class="w-9 h-9 rounded-lg bg-emerald6/10 flex items-center justify-center"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald6"></i></div>
+            <div class="flex-1"><p class="font-semibold text-sm">CC Road - Pindara</p><p class="text-xs text-slate-500">Inspector A. Verma • 18 Sep 2026 • 14:32</p></div>
+            <span class="px-2 py-0.5 text-[10px] rounded-full bg-emerald6 text-white">Verified</span>
+          </div>
+          <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-navy-700 rounded-lg">
+            <div class="w-9 h-9 rounded-lg bg-crimson/10 flex items-center justify-center"><i data-lucide="x-circle" class="w-4 h-4 text-crimson"></i></div>
+            <div class="flex-1"><p class="font-semibold text-sm">Hand Pump - Kotwa</p><p class="text-xs text-slate-500">Inspector R. Singh • 17 Sep 2026 • 11:15</p><p class="text-xs text-crimson mt-1">⚠ No physical structure found</p></div>
+            <span class="px-2 py-0.5 text-[10px] rounded-full bg-crimson text-white">Failed</span>
+          </div>
+          <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-navy-700 rounded-lg">
+            <div class="w-9 h-9 rounded-lg bg-amber7/10 flex items-center justify-center"><i data-lucide="alert-circle" class="w-4 h-4 text-amber7"></i></div>
+            <div class="flex-1"><p class="font-semibold text-sm">School Building - Ramnagar</p><p class="text-xs text-slate-500">Inspector S. Gupta • 16 Sep 2026 • 09:48</p><p class="text-xs text-amber7 mt-1">⚠ Sub-standard material detected</p></div>
+            <span class="px-2 py-0.5 text-[10px] rounded-full bg-amber7 text-white">Flagged</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl p-5 shadow-sm">
+        <h3 class="font-bold mb-4">Contractor Performance Scorecard</h3>
+        <div class="space-y-3">
+          <div>
+            <div class="flex justify-between text-sm mb-1"><span>Shree Construction Pvt Ltd</span><span class="font-bold text-emerald6">92/100</span></div>
+            <div class="h-2 bg-slate-200 dark:bg-navy-700 rounded-full"><div class="h-full bg-emerald6 rounded-full" style="width:92%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-1"><span>Varanasi Infra Builders</span><span class="font-bold text-emerald6">87/100</span></div>
+            <div class="h-2 bg-slate-200 dark:bg-navy-700 rounded-full"><div class="h-full bg-emerald6 rounded-full" style="width:87%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-1"><span>Kashi Nirman Kendra</span><span class="font-bold text-amber7">64/100</span></div>
+            <div class="h-2 bg-slate-200 dark:bg-navy-700 rounded-full"><div class="h-full bg-amber7 rounded-full" style="width:64%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-1"><span>Ganga Works (Blacklisted)</span><span class="font-bold text-crimson">28/100</span></div>
+            <div class="h-2 bg-slate-200 dark:bg-navy-700 rounded-full"><div class="h-full bg-crimson rounded-full" style="width:28%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass rounded-2xl p-5 shadow-sm">
+      <h3 class="font-bold mb-4">Geo-tagged Site Proofs (Recent)</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="group relative aspect-square rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-navy-700 dark:to-slate7 overflow-hidden cursor-pointer">
+          <div class="absolute inset-0 flex items-center justify-center text-4xl opacity-30">🏗️</div>
+          <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-2 text-[10px]"><p class="font-semibold">CC Road - Pindara</p><p>✅ Verified • 18 Sep</p></div>
+          <div class="absolute top-2 right-2 w-6 h-6 rounded-full bg-emerald6 flex items-center justify-center"><i data-lucide="check" class="w-3 h-3 text-white"></i></div>
+        </div>
+        <div class="group relative aspect-square rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-navy-700 dark:to-slate7 overflow-hidden cursor-pointer">
+          <div class="absolute inset-0 flex items-center justify-center text-4xl opacity-30">💧</div>
+          <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-2 text-[10px]"><p class="font-semibold">RO Plant - Lohta</p><p>⚠ Incomplete • 15 Sep</p></div>
+          <div class="absolute top-2 right-2 w-6 h-6 rounded-full bg-amber7 flex items-center justify-center"><i data-lucide="alert" class="w-3 h-3 text-white"></i></div>
+        </div>
+        <div class="group relative aspect-square rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-navy-700 dark:to-slate7 overflow-hidden cursor-pointer">
+          <div class="absolute inset-0 flex items-center justify-center text-4xl opacity-30">🏫</div>
+          <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-2 text-[10px]"><p class="font-semibold">School - Ramnagar</p><p>❌ Failed • 16 Sep</p></div>
+          <div class="absolute top-2 right-2 w-6 h-6 rounded-full bg-crimson flex items-center justify-center"><i data-lucide="x" class="w-3 h-3 text-white"></i></div>
+        </div>
+        <div class="group relative aspect-square rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-navy-700 dark:to-slate7 overflow-hidden cursor-pointer">
+          <div class="absolute inset-0 flex items-center justify-center text-4xl opacity-30">🏛️</div>
+          <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-2 text-[10px]"><p class="font-semibold">Hall - Bhelupur</p><p>✅ Verified • 14 Sep</p></div>
+          <div class="absolute top-2 right-2 w-6 h-6 rounded-full bg-emerald6 flex items-center justify-center"><i data-lucide="check" class="w-3 h-3 text-white"></i></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===================== PROJECT DETAIL MODAL ===================== -->
+<div id="projectModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center p-4">
+  <div class="bg-white dark:bg-navy-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+    <div class="sticky top-0 bg-white dark:bg-navy-800 border-b border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between">
+      <h3 class="font-bold text-lg" id="pmTitle">Project Details</h3>
+      <button onclick="closeModal('projectModal')" class="p-1 hover:bg-slate-100 dark:hover:bg-navy-700 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="p-5 space-y-4" id="pmBody"></div>
+  </div>
+</div>
+
+<!-- ===================== GRIEVANCE MODAL ===================== -->
+<div id="grievanceModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center p-4">
+  <div class="bg-white dark:bg-navy-800 rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+    <div class="sticky top-0 bg-white dark:bg-navy-800 border-b border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between">
+      <div>
+        <h3 class="font-bold text-lg" data-i18n="grievance.title">Submit Whistleblower / Grievance Report</h3>
+        <p class="text-xs text-slate-500" data-i18n="grievance.subtitle">Your identity is protected under Whistle Blowers Protection Act</p>
+      </div>
+      <button onclick="closeModal('grievanceModal')" class="p-1 hover:bg-slate-100 dark:hover:bg-navy-700 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <form id="grievanceForm" class="p-5 space-y-4">
+      <div>
+        <label class="text-xs font-semibold" data-i18n="grievance.category">Category</label>
+        <select required class="w-full mt-1 bg-slate-100 dark:bg-navy-700 rounded-lg px-3 py-2 text-sm border-0">
+          <option>Physical verification discrepancy</option>
+          <option>Suspected fraud / duplicate billing</option>
+          <option>Sub-standard material</option>
+          <option>Non-existent (ghost) project</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-semibold">Project ID (optional)</label>
+          <input type="text" placeholder="MPL/UP/2025/0412" class="w-full mt-1 bg-slate-100 dark:bg-navy-700 rounded-lg px-3 py-2 text-sm border-0" />
+        </div>
+        <div>
+          <label class="text-xs font-semibold" data-i18n="grievance.location">Location / Constituency</label>
+          <input required type="text" class="w-full mt-1 bg-slate-100 dark:bg-navy-700 rounded-lg px-3 py-2 text-sm border-0" />
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-semibold" data-i18n="grievance.description">Description</label>
+        <textarea required rows="4" class="w-full mt-1 bg-slate-100 dark:bg-navy-700 rounded-lg px-3 py-2 text-sm border-0" placeholder="Describe the discrepancy..."></textarea>
+      </div>
+      <div>
+        <label class="text-xs font-semibold" data-i18n="grievance.evidence">Attach Evidence (photo/document)</label>
+        <input type="file" multiple class="w-full mt-1 text-sm" />
+      </div>
+      <label class="flex items-center gap-2 text-xs">
+        <input type="checkbox" required />
+        <span data-i18n="grievance.consent">I confirm the information is true to the best of my knowledge</span>
+      </label>
+      <button type="submit" class="w-full bg-crimson hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2">
+        <i data-lucide="send" class="w-4 h-4"></i><span data-i18n="grievance.submit">Submit Anonymously</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== AUDIT REPORT MODAL ===================== -->
+<div id="auditReportModal" class="fixed inset-0 z-50 hidden modal-backdrop items-center justify-center p-4">
+  <div class="bg-white dark:bg-navy-800 rounded-2xl shadow-2xl max-w-xl w-full animate-fade-in">
+    <div class="p-6 text-center">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-saffron to-crimson flex items-center justify-center mb-4">
+        <i data-lucide="file-check-2" class="w-8 h-8 text-white"></i>
+      </div>
+      <h3 class="text-xl font-bold mb-2" data-i18n="report.title">Forensic Audit Report Ready</h3>
+      <p class="text-sm text-slate-500 mb-5" data-i18n="report.desc">Comprehensive AI-generated audit summary with anomaly evidence</p>
+      <div class="bg-slate-50 dark:bg-navy-700 rounded-xl p-4 text-left text-sm space-y-2 mb-5">
+        <div class="flex justify-between"><span>Report ID</span><span class="font-mono font-bold">AUD-2026-09-19-0412</span></div>
+        <div class="flex justify-between"><span>Generated</span><span>19 Sep 2026, 09:42 IST</span></div>
+        <div class="flex justify-between"><span>Anomalies</span><span class="font-bold text-crimson">1,247</span></div>
+        <div class="flex justify-between"><span>Financial Exposure</span><span class="font-bold">₹24.6 Crore</span></div>
+        <div class="flex justify-between"><span>Classification</span><span>CONFIDENTIAL</span></div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="downloadMockPDF()" class="flex-1 bg-navy hover:bg-navy-700 text-white font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2">
+          <i data-lucide="file-text" class="w-4 h-4"></i>PDF
+        </button>
+        <button onclick="downloadMockPDF()" class="flex-1 bg-emerald6 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2">
+          <i data-lucide="table" class="w-4 h-4"></i>XLSX
+        </button>
+        <button onclick="closeModal('auditReportModal')" class="flex-1 bg-slate-200 dark:bg-navy-700 font-semibold py-2.5 rounded-xl">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TOAST ===================== -->
+<div id="toast" class="fixed bottom-6 right-6 z-50 hidden bg-navy text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-slide-up">
+  <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald6"></i>
+  <span id="toastMsg" class="text-sm font-semibold">Success</span>
+</div>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="mt-10 border-t border-slate-200 dark:border-slate-800 py-6">
+  <div class="max-w-[1600px] mx-auto px-4 lg:px-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+    <p>© 2026 MPLADS-Drishti • Ministry of Statistics & Programme Implementation (MoSPI) • <span data-i18n="footer.siha">Smart India Hackathon 26102</span></p>
+    <div class="flex gap-4">
+      <a href="#" class="hover:text-saffron">Privacy</a>
+      <a href="#" class="hover:text-saffron">Terms</a>
+      <a href="#" class="hover:text-saffron">RTI</a>
+      <a href="#" class="hover:text-saffron">Accessibility</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ===================== JAVASCRIPT ===================== -->
+<script>
+/* ============================================================
+   FIREBASE CONFIG (ready for connection)
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyDemoKeyReplaceWithYours",
+  authDomain: "mplads-drishti.firebaseapp.com",
+  projectId: "mplads-drishti",
+  storageBucket: "mplads-drishti.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef",
+  measurementId: "G-XXXXXX"
+};
+// Usage: import { initializeApp } from "firebase/app";
+// const app = initializeApp(firebaseConfig);
+// const db  = getFirestore(app);
+// Collections: /projects, /expenditures, /anomalies, /feedback
+
+/* ============================================================
+   I18N DICTIONARY
+   ============================================================ */
+const I18N = {
+  en: {
+    'app.title':'MPLADS-Drishti',
+    'app.subtitle':'AI Audit & Analytics • MoSPI',
+    'role.mospi':'MoSPI / Central',
+    'role.mp':'Member of Parliament',
+    'role.district':'District Authority',
+    'role.current':'CURRENT VIEW',
+    'role.mospi.title':'Central Ministry Oversight Dashboard',
+    'role.mospi.desc':'National-level AI-driven anomaly detection across all MPLADS constituencies. Monitor fund leakage, ghost projects, and duplicate billing in real-time.',
+    'role.mp.title':'Constituency Project Dashboard',
+    'role.mp.desc':'Track sanctioned works, monitor fund utilization, and respond to AI-flagged anomalies in your constituency.',
+    'role.district.title':'District Nodal Officer Dashboard',
+    'role.district.desc':'Manage field inspections, contractor performance, and geo-tagged site verifications across the district.',
+    'action.downloadReport':'Download Audit Report',
+    'action.raiseGrievance':'Raise Grievance',
+    'kpi.flagged':'Flagged Anomalies',
+    'kpi.utilization':'Fund Utilization Rate',
+    'kpi.duplicate':'Suspected Duplicate Projects',
+    'kpi.ghost':'Ghost Projects Flagged',
+    'kpi.vsLastMonth':'vs last month',
+    'kpi.qoq':'QoQ',
+    'kpi.atRisk':'at risk',
+    'kpi.potentialLoss':'potential loss',
+    'ai.duplicate.title':'Duplicate Billing Detection',
+    'ai.duplicate.desc':'Identical works billed across adjacent FYs',
+    'ai.duplicate.insight':'AI matched 342 work orders with >92% similarity in scope, location & vendor.',
+    'ai.ghost.title':'Ghost / Dead Project Flag',
+    'ai.ghost.desc':"Marked 'Completed' but zero geo-tagged proof",
+    'ai.ghost.insight':'Satellite + geo-tag analysis confirms no physical progress on 89 sites.',
+    'ai.cost.title':'Cost Inflation Index',
+    'ai.cost.desc':'Per-unit cost vs state benchmark deviation',
+    'ai.cost.insight':'512 projects exceed state PWD schedule of rates by >25%.',
+    'ai.unspent.title':'Unspent Fund Stagnation',
+    'ai.unspent.desc':'Idle funds >180 days in bank accounts',
+    'ai.unspent.insight':'167 MPs have >50% of annual allocation unutilized for 180+ days.',
+    'chart.fund.title':'Fund Flow: Sanctioned vs Released vs Utilized',
+    'chart.fund.desc':'Top 10 constituencies by allocation (FY 2025-26)',
+    'chart.category.title':'Category Breakdown',
+    'chart.category.desc':'Projects by sector',
+    'cat.water':'Drinking Water','cat.sanitation':'Sanitation','cat.roads':'Rural Roads','cat.halls':'Community Halls','cat.other':'Other',
+    'ranking.title':'State Anomaly Rankings',
+    'riskmeter.title':'National AI Risk Meter',
+    'riskmeter.desc':'Aggregate risk score across all constituencies',
+    'riskmeter.score':'RISK SCORE',
+    'riskmeter.level':'HIGH RISK',
+    'map.title':'Geospatial Project Tracker & Satellite Audit',
+    'map.desc':'Click any pin to view project details, geo-tagged photos, and AI verdict',
+    'map.legend.complete':'Verified Complete','map.legend.progress':'In Progress','map.legend.risk':'High AI Risk',
+    'table.title':'Flagged Anomalies Register',
+    'table.desc':'Real-time AI-flagged cases requiring audit action',
+    'table.records':'records',
+    'table.col.severity':'Severity','table.col.projectId':'Project ID','table.col.type':'Anomaly Type',
+    'table.col.constituency':'Constituency','table.col.vendor':'Vendor','table.col.amount':'Amount','table.col.action':'Action',
+    'mp.myProjects':'My Constituency Projects','mp.total':'Total Sanctioned','mp.completed':'Completed','mp.ongoing':'Ongoing','mp.flagged':'AI-Flagged','mp.utilization':'utilization',
+    'mp.sanctionStatus':'Sanction Status Timeline','mp.predictedCompletion':'AI Predicted Completion','mp.myFlagged':'My Flagged Projects (Require Attention)',
+    'grievance.title':'Submit Whistleblower / Grievance Report',
+    'grievance.subtitle':'Your identity is protected under Whistle Blowers Protection Act',
+    'grievance.category':'Category','grievance.location':'Location / Constituency','grievance.description':'Description','grievance.evidence':'Attach Evidence (photo/document)','grievance.consent':'I confirm the information is true to the best of my knowledge','grievance.submit':'Submit Anonymously',
+    'report.title':'Forensic Audit Report Ready',
+    'report.desc':'Comprehensive AI-generated audit summary with anomaly evidence',
+    'footer.siha':'Smart India Hackathon 26102'
+  },
+  hi: {
+    'app.title':'एमपिलाड्स दृष्टि',
+    'app.subtitle':'AI लेखापरीक्षा एवं विश्लेषण • सांख्यिकी मंत्रालय',
+    'role.mospi':'सांख्यिकी मंत्रालय / केंद्र',
+    'role.mp':'सांसद',
+    'role.district':'जिला प्राधिकारी',
+    'role.current':'वर्तमान दृश्य',
+    'role.mospi.title':'केंद्रीय मंत्रालय निगरानी डैशबोर्ड',
+    'role.mospi.desc':'सभी एमपिलाड्स निर्वाचन क्षेत्रों में राष्ट्रीय स्तर पर AI-संचालित विसंगति पहचान। वास्तविक समय में निधि रिसाव, भूत परियोजनाओं और डुप्लीकेट बिलिंग की निगरानी करें।',
+    'role.mp.title':'निर्वाचन क्षेत्र परियोजना डैशबोर्ड',
+    'role.mp.desc':'स्वीकृत कार्यों को ट्रैक करें, निधि उपयोग की निगरानी करें, और अपने निर्वाचन क्षेत्र में AI-चिह्नित विसंगतियों का उत्तर दें।',
+    'role.district.title':'जिला नोडल अधिकारी डैशबोर्ड',
+    'role.district.desc':'जिले भर में क्षेत्रीय निरीक्षण, ठेकेदार प्रदर्शन और भू-टैग साइट सत्यापन का प्रबंधन करें।',
+    'action.downloadReport':'लेखापरीक्षा रिपोर्ट डाउनलोड करें',
+    'action.raiseGrievance':'शिकायत दर्ज करें',
+    'kpi.flagged':'चिह्नित विसंगतियाँ',
+    'kpi.utilization':'निधि उपयोग दर',
+    'kpi.duplicate':'संदिग्ध डुप्लीकेट परियोजनाएं',
+    'kpi.ghost':'चिह्नित भूत परियोजनाएं',
+    'kpi.vsLastMonth':'पिछले माह की तुलना में',
+    'kpi.qoq':'तिमाही दर तिमाही',
+    'kpi.atRisk':'जोखिम में',
+    'kpi.potentialLoss':'संभावित हानि',
+    'ai.duplicate.title':'डुप्लीकेट बिलिंग पहचान',
+    'ai.duplicate.desc':'लगत वित्तीय वर्षों में बिल किए गए समान कार्य',
+    'ai.duplicate.insight':'AI ने 342 कार्य आदेशों को >92% समानता (क्षेत्र, स्थान, विक्रेता) के साथ मैच किया।',
+    'ai.ghost.title':'भूत / मृत परियोजना फ्लैग',
+    'ai.ghost.desc':"'पूर्ण' चिह्नित लेकिन शून्य भू-टैग प्रमाण",
+    'ai.ghost.insight':'उपग्रह + भू-टैग विश्लेषण 89 साइटों पर कोई भौतिक प्रगति नहीं होने की पुष्टि करता है।',
+    'ai.cost.title':'लागत मुद्रास्फीति सूचकांक',
+    'ai.cost.desc':'प्रति इकाई लागत बनाम राज्य बेंचमार्क विचलन',
+    'ai.cost.insight':'512 परियोजनाएं राज्य PWD दर अनुसूची से >25% अधिक हैं।',
+    'ai.unspent.title':'अव्ययित निधि स्थगन',
+    'ai.unspent.desc':'बैंक खातों में >180 दिनों से निष्क्रिय निधि',
+    'ai.unspent.insight':'167 सांसदों के पास 180+ दिनों से वार्षिक आवंटन का >50% अप्रयुक्त है।',
+    'chart.fund.title':'निधि प्रवाह: स्वीकृत बनाम जारी बनाम उपयोग किया गया',
+    'chart.fund.desc':'आवंटन द्वारा शीर्ष 10 निर्वाचन क्षेत्र (वित्तीय वर्ष 2025-26)',
+    'chart.category.title':'श्रेणी विभाजन',
+    'chart.category.desc':'क्षेत्र के अनुसार परियोजनाएं',
+    'cat.water':'पेयजल','cat.sanitation':'स्वच्छता','cat.roads':'ग्रामीण सड़कें','cat.halls':'सामुदायिक भवन','cat.other':'अन्य',
+    'ranking.title':'राज्य विसंगति रैंकिंग',
+    'riskmeter.title':'राष्ट्रीय AI जोखिम मीटर',
+    'riskmeter.desc':'सभी निर्वाचन क्षेत्रों का समग्र जोखिम स्कोर',
+    'riskmeter.score':'जोखिम स्कोर',
+    'riskmeter.level':'उच्च जोखिम',
+    'map.title':'भौगोलिक परियोजना ट्रैकर एवं उपग्रह लेखापरीक्षा',
+    'map.desc':'परियोजना विवरण, भू-टैग फोटो और AI निर्णय देखने के लिए किसी भी पिन पर क्लिक करें',
+    'map.legend.complete':'सत्यापित पूर्ण','map.legend.progress':'प्रगति पर','map.legend.risk':'उच्च AI जोखिम',
+    'table.title':'चिह्नित विसंगति रजिस्टर',
+    'table.desc':'लेखापरीक्षा कार्रवाई की आवश्यकता वाले वास्तविक समय में AI-चिह्नित मामले',
+    'table.records':'रिकॉर्ड',
+    'table.col.severity':'गंभीरता','table.col.projectId':'परियोजना ID','table.col.type':'विसंगति प्रकार',
+    'table.col.constituency':'निर्वाचन क्षेत्र','table.col.vendor':'विक्रेता','table.col.amount':'राशि','table.col.action':'कार्रवाई',
+    'mp.myProjects':'मेरे निर्वाचन क्षेत्र की परियोजनाएं','mp.total':'कुल स्वीकृत','mp.completed':'पूर्ण','mp.ongoing':'चालू','mp.flagged':'AI-चिह्नित','mp.utilization':'उपयोग',
+    'mp.sanctionStatus':'स्वीकृति स्थिति टाइमलाइन','mp.predictedCompletion':'AI अनुमानित पूर्णता','mp.myFlagged':'मेरी चिह्नित परियोजनाएं (ध्यान आवश्यक)',
+    'grievance.title':'विसिलब्लोअर / शिकायत रिपोर्ट जमा करें',
+    'grievance.subtitle':'आपकी पहचान विसिलब्लोअर संरक्षण अधिनियम के तहत सुरक्षित है',
+    'grievance.category':'श्रेणी','grievance.location':'स्थान / निर्वाचन क्षेत्र','grievance.description':'विवरण','grievance.evidence':'साक्ष्य संलग्न करें (फोटो/दस्तावेज़)','grievance.consent':'मैं पुष्टि करता हूं कि जानकारी मेरे सर्वोत्तम ज्ञान के अनुसार सत्य है','grievance.submit':'गुमनाम रूप से जमा करें',
+    'report.title':'फोरेंसिक लेखापरीक्षा रिपोर्ट तैयार',
+    'report.desc':'विसंगति साक्ष्य के साथ व्यापक AI-जनित लेखापरीक्षा सारांश',
+    'footer.siha':'स्मार्ट इंडिया हैकाथॉन 26102'
+  }
+};
+
+/* ============================================================
+   MOCK DATA
+   ============================================================ */
+const ANOMALIES = [
+  { id:'MPL/UP/2025/0412', type:'Duplicate Billing', typeHi:'डुप्लीकेट बिलिंग', constituency:'Varanasi', constituencyHi:'वाराणसी', vendor:'Shree Construction', amount:2200000, severity:'Critical' },
+  { id:'MPL/MP/2025/0187', type:'Ghost Project', typeHi:'भूत परियोजना', constituency:'Bhopal', constituencyHi:'भोपाल', vendor:'Kashi Nirman Kendra', amount:1800000, severity:'Critical' },
+  { id:'MPL/RJ/2025/0923', type:'Cost Inflation +42%', typeHi:'लागत मुद्रास्फीति +42%', constituency:'Jaipur', constituencyHi:'जयपुर', vendor:'Maru Infra Builders', amount:3800000, severity:'High' },
+  { id:'MPL/BH/2025/0556', type:'Unspent >180d', typeHi:'अव्ययित >180 दिन', constituency:'Patna', constituencyHi:'पटना', vendor:'Ganga Works', amount:4500000, severity:'Medium' },
+  { id:'MPL/MH/2025/1102', type:'Duplicate Billing', typeHi:'डुप्लीकेट बिलिंग', constituency:'Mumbai North', constituencyHi:'मुंबई उत्तर', vendor:'Varanasi Infra', amount:2900000, severity:'Critical' },
+  { id:'MPL/TN/2025/0734', type:'No Geo-tag', typeHi:'कोई भू-टैग नहीं', constituency:'Chennai South', constituencyHi:'चेन्नई दक्षिण', vendor:'Dravida Construction', amount:1200000, severity:'High' },
+  { id:'MPL/WB/2025/0298', type:'Cost Inflation +38%', typeHi:'लागत मुद्रास्फीति +38%', constituency:'Kolkata', constituencyHi:'कोलकाता', vendor:'Bengal Builders', amount:3100000, severity:'High' },
+  { id:'MPL/PB/2025/0641', type:'Ghost Project', typeHi:'भूत परियोजना', constituency:'Amritsar', constituencyHi:'अमृतसर', vendor:'Punjab Nirman', amount:1500000, severity:'Critical' },
+  { id:'MPL/KA/2025/0819', type:'Unspent >180d', typeHi:'अव्ययित >180 दिन', constituency:'Bengaluru', constituencyHi:'बेंगलुरु', vendor:'Deccan Infra', amount:5200000, severity:'Medium' },
+  { id:'MPL/GJ/2025/0477', type:'Duplicate Billing', typeHi:'डुप्लीकेट बिलिंग', constituency:'Ahmedabad', constituencyHi:'अहमदाबाद', vendor:'Gurjar Construction', amount:2600000, severity:'High' },
+  { id:'MPL/UK/2025/0123', type:'Sub-standard', typeHi:'अमानक', constituency:'Dehradun', constituencyHi:'देहरादून', vendor:'Himalaya Works', amount:1900000, severity:'High' },
+  { id:'MPL/HR/2025/0388', type:'No Geo-tag', typeHi:'कोई भू-टैग नहीं', constituency:'Gurugram', constituencyHi:'गुरुग्राम', vendor:'Haryana Infra', amount:950000, severity:'Medium' }
+];
+
+const PROJECTS = [
+  { id:'P001', title:'CC Road - Pindara to Saraiya', titleHi:'सीसी रोड - पिंडारा से सरैया', amount:4500000, contractor:'Shree Construction', status:'complete', lat:25.3176, lng:82.9739, verdict:'AI: Verified Genuine', verdictHi:'AI: सत्यापित वास्तविक' },
+  { id:'P002', title:'RO Plant - Lohta', titleHi:'RO प्लांट - लोहता', amount:1800000, contractor:'Varanasi Infra', status:'progress', lat:25.3640, lng:83.0450, verdict:'AI: Delayed 47 days', verdictHi:'AI: 47 दिन विलंबित' },
+  { id:'P003', title:'Community Hall - Bhelupur', titleHi:'सामुदायिक भवन - भेलूपुर', amount:2800000, contractor:'Kashi Nirman Kendra', status:'progress', lat:25.3015, lng:82.9870, verdict:'AI: On track', verdictHi:'AI: पटरी पर' },
+  { id:'P004', title:'Hand Pump - Kotwa', titleHi:'हैंड पंप - कोटवा', amount:320000, contractor:'Ganga Works', status:'risk', lat:25.2840, lng:82.9210, verdict:'AI: GHOST PROJECT - No structure found', verdictHi:'AI: भूत परियोजना - कोई संरचना नहीं मिली' },
+  { id:'P005', title:'School Building - Ramnagar', titleHi:'विद्यालय भवन - रामनगर', amount:3800000, contractor:'Maru Infra Builders', status:'risk', lat:25.3420, lng:83.0180, verdict:'AI: Cost inflated +42%', verdictHi:'AI: लागत +42% बढ़ाई गई' },
+  { id:'P006', title:'Sanitation Drive - Sigra', titleHi:'स्वच्छता अभियान - सिगरा', amount:1500000, contractor:'Dravida Construction', status:'complete', lat:25.3280, lng:83.0010, verdict:'AI: Verified Genuine', verdictHi:'AI: सत्यापित वास्तविक' },
+  { id:'P007', title:'Drinking Water - Lanka', titleHi:'पेयजल - लंका', amount:2200000, contractor:'Himalaya Works', status:'progress', lat:25.2960, lng:82.9540, verdict:'AI: On track', verdictHi:'AI: पटरी पर' },
+  { id:'P008', title:'Rural Road - Shivpur', titleHi:'ग्रामीण सड़क - शिवपुर', amount:2200000, contractor:'Shree Construction', status:'risk', lat:25.3780, lng:82.9820, verdict:'AI: DUPLICATE BILLING detected', verdictHi:'AI: डुप्लीकेट बिलिंग पाई गई' }
+];
+
+const STATES = [
+  { name:'Uttar Pradesh', nameHi:'उत्तर प्रदेश', score:89, cases:214, color:'bg-crimson' },
+  { name:'Bihar', nameHi:'बिहार', score:82, cases:178, color:'bg-crimson' },
+  { name:'Madhya Pradesh', nameHi:'मध्य प्रदेश', score:74, cases:142, color:'bg-amber7' },
+  { name:'Rajasthan', nameHi:'राजस्थान', score:68, cases:118, color:'bg-amber7' },
+  { name:'Maharashtra', nameHi:'महाराष्ट्र', score:61, cases:98, color:'bg-amber7' },
+  { name:'West Bengal', nameHi:'पश्चिम बंगाल', score:58, cases:87, color:'bg-saffron' },
+  { name:'Jharkhand', nameHi:'झारखंड', score:54, cases:72, color:'bg-saffron' },
+  { name:'Odisha', nameHi:'ओडिशा', score:48, cases:61, color:'bg-emerald6' }
+];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  lang: 'en',
+  theme: 'light',
+  role: 'mospi'
+};
+
+/* ============================================================
+   I18N ENGINE
+   ============================================================ */
+function applyLanguage() {
+  const dict = I18N[state.lang];
+  document.documentElement.lang = state.lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key]) el.textContent = dict[key];
+  });
+  // Role banner title/desc
+  const roleKey = `role.${state.role}.title`;
+  const roleDescKey = `role.${state.role}.desc`;
+  const rt = document.getElementById('roleTitle');
+  const rd = document.getElementById('roleDesc');
+  if (rt && dict[roleKey]) rt.textContent = dict[roleKey];
+  if (rd && dict[roleDescKey]) rd.textContent = dict[roleDescKey];
+
+  // Hindi font class
+  document.body.classList.toggle('hindi-text', state.lang === 'hi');
+
+  // Language toggle buttons
+  document.getElementById('langEn').className = `px-2 py-1 text-xs font-semibold rounded-md transition ${state.lang==='en'?'bg-white dark:bg-navy-800 shadow':'text-slate-500'}`;
+  document.getElementById('langHi').className = `px-2 py-1 text-xs font-semibold rounded-md transition ${state.lang==='hi'?'bg-white dark:bg-navy-800 shadow':'text-slate-500'}`;
+
+  // Re-render dynamic content
+  renderAnomalyTable();
+  renderStateRankings();
+  renderCharts();
+}
+
+/* ============================================================
+   THEME
+   ============================================================ */
+function applyTheme() {
+  document.documentElement.classList.toggle('dark', state.theme === 'dark');
+  document.documentElement.classList.toggle('light', state.theme === 'light');
+}
+
+/* ============================================================
+   ROLE SWITCHING
+   ============================================================ */
+function switchRole(role) {
+  state.role = role;
+  document.querySelectorAll('.role-section').forEach(s => s.classList.remove('active'));
+  document.getElementById(`role-${role}`).classList.add('active');
+  document.querySelectorAll('.role-tab').forEach(t => {
+    const isActive = t.dataset.role === role;
+    t.classList.toggle('bg-white', isActive);
+    t.classList.toggle('dark:bg-navy-800', isActive);
+    t.classList.toggle('shadow', isActive);
+    t.classList.toggle('text-navy', isActive);
+    t.classList.toggle('dark:text-white', isActive);
+    t.classList.toggle('text-slate-600', !isActive);
+    t.classList.toggle('dark:text-slate-400', !isActive);
+  });
+  applyLanguage();
+  // Re-init map if needed
+  if (role === 'mospi' && window.projectMap) setTimeout(() => window.projectMap.invalidateSize(), 100);
+  // Close mobile menu
+  document.getElementById('mobileRoleMenu').classList.add('hidden');
+}
+
+/* ============================================================
+   ANOMALY TABLE
+   ============================================================ */
+function renderAnomalyTable() {
+  const search = (document.getElementById('tableSearch')?.value || '').toLowerCase();
+  const severity = document.getElementById('tableSeverity')?.value || 'all';
+  const isHi = state.lang === 'hi';
+
+  const filtered = ANOMALIES.filter(a => {
+    if (severity !== 'all' && a.severity !== severity) return false;
+    if (search) {
+      const hay = `${a.id} ${a.vendor} ${a.constituency} ${a.constituencyHi} ${a.type} ${a.typeHi}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('tableCount').textContent = filtered.length;
+
+  const tbody = document.getElementById('anomalyTableBody');
+  tbody.innerHTML = filtered.map(a => {
+    const sevColor = a.severity === 'Critical' ? 'bg-crimson badge-critical' : a.severity === 'High' ? 'bg-amber7' : 'bg-emerald6';
+    const fmt = '₹' + (a.amount/100000).toFixed(1) + 'L';
+    return `
+      <tr class="audit-row border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-navy-700">
+        <td class="py-3 px-2"><span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${sevColor} text-white">${a.severity.toUpperCase()}</span></td>
+        <td class="py-3 px-2 font-mono text-xs">${a.id}</td>
+        <td class="py-3 px-2 text-sm">${isHi ? a.typeHi : a.type}</td>
+        <td class="py-3 px-2 text-sm">${isHi ? a.constituencyHi : a.constituency}</td>
+        <td class="py-3 px-2 text-sm">${a.vendor}</td>
+        <td class="py-3 px-2 text-sm font-semibold">${fmt}</td>
+        <td class="py-3 px-2"><button onclick="generateAuditNotice('${a.id}')" class="text-xs bg-saffron hover:bg-amber-500 text-navy font-semibold px-2 py-1 rounded-md flex items-center gap-1"><i data-lucide="file-warning" class="w-3 h-3"></i>${isHi?'नोटिस':'Notice'}</button></td>
+      </tr>
+    `;
+  }).join('');
+  if (window.lucide) lucide.createIcons();
+}
+
+/* ============================================================
+   STATE RANKINGS
+   ============================================================ */
+function renderStateRankings() {
+  const isHi = state.lang === 'hi';
+  const container = document.getElementById('stateRankings');
+  const maxScore = Math.max(...STATES.map(s => s.score));
+  container.innerHTML = STATES.map((s,i) => `
+    <div class="flex items-center gap-3">
+      <span class="text-xs font-bold text-slate-400 w-5">${i+1}</span>
+      <div class="flex-1">
+        <div class="flex justify-between text-sm mb-1">
+          <span class="font-semibold">${isHi ? s.nameHi : s.name}</span>
+          <span class="font-bold">${s.score}/100 • ${s.cases} ${isHi?'मामले':'cases'}</span>
+        </div>
+        <div class="h-2 bg-slate-200 dark:bg-navy-700 rounded-full overflow-hidden">
+          <div class="h-full ${s.color}" style="width:${(s.score/maxScore)*100}%"></div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   CHARTS
+   ============================================================ */
+let fundChart, catChart, mpChart;
+function renderCharts() {
+  const isDark = state.theme === 'dark';
+  const gridColor = isDark ? 'rgba(148,163,184,0.15)' : 'rgba(148,163,184,0.3)';
+  const textColor = isDark ? '#cbd5e1' : '#475569';
+
+  Chart.defaults.color = textColor;
+  Chart.defaults.font.family = 'Inter, sans-serif';
+
+  // Fund Flow Chart
+  const fundCtx = document.getElementById('fundFlowChart');
+  if (fundCtx) {
+    if (fundChart) fundChart.destroy();
+    fundChart = new Chart(fundCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Varanasi','Mumbai N','Bhopal','Jaipur','Patna','Chennai S','Kolkata','Amritsar','Bengaluru','Ahmedabad'],
+        datasets: [
+          { label: state.lang==='hi'?'स्वीकृत':'Sanctioned', data:[500,480,500,500,500,490,500,500,500,500], backgroundColor:'#0F172A', borderRadius:6 },
+          { label: state.lang==='hi'?'जारी':'Released', data:[480,460,470,475,480,470,475,480,485,470], backgroundColor:'#F59E0B', borderRadius:6 },
+          { label: state.lang==='hi'?'उपयोग':'Utilized', data:[342,310,298,340,265,380,320,280,410,355], backgroundColor:'#059669', borderRadius:6 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position:'bottom', labels:{boxWidth:12, padding:15} } },
+        scales: {
+          x: { grid:{display:false} },
+          y: { grid:{color:gridColor}, ticks:{ callback: v => '₹'+v+'L' } }
+        }
+      }
+    });
+  }
+
+  // Category Chart
+  const catCtx = document.getElementById('categoryChart');
+  if (catCtx) {
+    if (catChart) catChart.destroy();
+    catChart = new Chart(catCtx, {
+      type: 'doughnut',
+      data: {
+        labels: [state.lang==='hi'?'पेयजल':'Water', state.lang==='hi'?'स्वच्छता':'Sanitation', state.lang==='hi'?'सड़कें':'Roads', state.lang==='hi'?'भवन':'Halls', state.lang==='hi'?'अन्य':'Other'],
+        datasets: [{ data:[28,22,25,15,10], backgroundColor:['#F59E0B','#059669','#DC2626','#3b82f6','#8b5cf6'], borderWidth:0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout:'65%',
+        plugins: { legend:{display:false} }
+      }
+    });
+  }
+
+  // MP Timeline Chart
+  const mpCtx = document.getElementById('mpTimelineChart');
+  if (mpCtx && state.role === 'mp') {
+    if (mpChart) mpChart.destroy();
+    mpChart = new Chart(mpCtx, {
+      type: 'line',
+      data: {
+        labels: ['Apr','May','Jun','Jul','Aug','Sep'],
+        datasets: [
+          { label: state.lang==='hi'?'स्वीकृत':'Sanctioned', data:[8,14,22,31,38,47], borderColor:'#0F172A', backgroundColor:'rgba(15,23,42,0.1)', fill:true, tension:.4 },
+          { label: state.lang==='hi'?'पूर्ण':'Completed', data:[4,9,15,22,27,31], borderColor:'#059669', backgroundColor:'rgba(5,150,105,0.1)', fill:true, tension:.4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend:{position:'bottom'} },
+        scales: { y:{grid:{color:gridColor}} }
+      }
+    });
+  }
+}
+
+/* ============================================================
+   MAP
+   ============================================================ */
+function initMap() {
+  if (window.projectMap) return;
+  window.projectMap = L.map('projectMap', { scrollWheelZoom:false }).setView([25.3176, 82.9739], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© OpenStreetMap', maxZoom:19
+  }).addTo(window.projectMap);
+
+  PROJECTS.forEach(p => {
+    const color = p.status === 'complete' ? '#059669' : p.status === 'progress' ? '#3b82f6' : '#DC2626';
+    const icon = L.divIcon({
+      className: 'custom-pin',
+      html: `<div style="background:${color};width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.3);"></div>`,
+      iconSize:[20,20], iconAnchor:[10,10]
+    });
+    const marker = L.marker([p.lat, p.lng], { icon }).addTo(window.projectMap);
+    marker.on('click', () => openProjectModal(p));
+  });
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+function openModal(id) {
+  const m = document.getElementById(id);
+  m.classList.remove('hidden'); m.classList.add('flex');
+}
+function closeModal(id) {
+  const m = document.getElementById(id);
+  m.classList.add('hidden'); m.classList.remove('flex');
+}
+function openProjectModal(p) {
+  const isHi = state.lang === 'hi';
+  const statusColor = p.status === 'complete' ? 'bg-emerald6' : p.status === 'progress' ? 'bg-sky-500' : 'bg-crimson';
+  const statusLabel = p.status === 'complete' ? (isHi?'पूर्ण':'Complete') : p.status === 'progress' ? (isHi?'प्रगति पर':'In Progress') : (isHi?'उच्च जोखिम':'High Risk');
+  const amt = '₹' + (p.amount/100000).toFixed(1) + ' Lakh';
+
+  document.getElementById('pmTitle').textContent = isHi ? p.titleHi : p.title;
+  document.getElementById('pmBody').innerHTML = `
+    <div class="flex items-center gap-2 mb-3">
+      <span class="px-2 py-1 text-[10px] font-bold rounded-full ${statusColor} text-white">${statusLabel}</span>
+      <span class="text-xs text-slate-500 font-mono">${p.id}</span>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">${isHi?'स्वीकृत राशि':'Sanctioned Amount'}</p><p class="text-lg font-bold">${amt}</p></div>
+      <div class="bg-slate-50 dark:bg-navy-700 rounded-lg p-3"><p class="text-xs text-slate-500">${isHi?'ठेकेदार':'Contractor'}</p><p class="text-sm font-bold">${p.contractor}</p></div>
+    </div>
+    <div>
+      <p class="text-xs font-semibold mb-2">${isHi?'स्थान (भू-टैग)':'Location (Geo-tagged)'}</p>
+      <div class="h-32 rounded-lg overflow-hidden" id="pmMiniMap"></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <p class="text-xs font-semibold mb-2">${isHi?'पूर्व निरीक्षण':'Before Inspection'}</p>
+        <div class="aspect-video bg-gradient-to-br from-slate-300 to-slate-400 dark:from-navy-700 dark:to-slate7 rounded-lg flex items-center justify-center text-3xl">🏗️</div>
+      </div>
+      <div>
+        <p class="text-xs font-semibold mb-2">${isHi?'वर्तमान स्थिति':'Current Status'}</p>
+        <div class="aspect-video bg-gradient-to-br from-slate-300 to-slate-400 dark:from-navy-700 dark:to-slate7 rounded-lg flex items-center justify-center text-3xl">${p.status==='complete'?'✅':p.status==='progress'?'🚧':'❌'}</div>
+      </div>
+    </div>
+    <div class="bg-gradient-to-br from-navy to-navy-700 text-white rounded-xl p-4">
+      <p class="text-xs text-saffron font-bold mb-1">🤖 AI VERDICT</p>
+      <p class="text-sm font-semibold">${isHi ? p.verdictHi : p.verdict}</p>
+      <p class="text-xs text-slate-400 mt-2">${isHi?'विश्वास स्कोर':'Confidence'}: 94% • ${isHi?'अंतिम अद्यतन':'Last updated'}: 18 Sep 2026</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="closeModal('projectModal')" class="flex-1 bg-slate-200 dark:bg-navy-700 font-semibold py-2 rounded-xl">${isHi?'बंद करें':'Close'}</button>
+      <button onclick="generateAuditNotice('${p.id}')" class="flex-1 bg-saffron hover:bg-amber-500 text-navy font-semibold py-2 rounded-xl flex items-center justify-center gap-1"><i data-lucide="file-warning" class="w-4 h-4"></i>${isHi?'लेखापरीक्षा नोटिस':'Audit Notice'}</button>
+    </div>
+  `;
+  openModal('projectModal');
+  if (window.lucide) lucide.createIcons();
+
+  // Mini map
+  setTimeout(() => {
+    const mini = L.map('pmMiniMap', { zoomControl:false, attributionControl:false, dragging:false }).setView([p.lat, p.lng], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mini);
+    const color = p.status === 'complete' ? '#059669' : p.status === 'progress' ? '#3b82f6' : '#DC2626';
+    L.circleMarker([p.lat, p.lng], { radius:8, color:'white', weight:3, fillColor:color, fillOpacity:1 }).addTo(mini);
+  }, 100);
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function generateAuditNotice(id) {
+  showToast(`${state.lang==='hi'?'लेखापरीक्षा नोटिस तैयार: ':'Audit Notice generated: '}${id}`);
+}
+function exportTableCSV() {
+  const isHi = state.lang === 'hi';
+  const header = ['Project ID','Type','Constituency','Vendor','Amount','Severity'];
+  const rows = ANOMALIES.map(a => [a.id, isHi?a.typeHi:a.type, isHi?a.constituencyHi:a.constituency, a.vendor, a.amount, a.severity]);
+  const csv = [header, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `mplads-anomalies-${Date.now()}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  showToast(state.lang==='hi'?'CSV डाउनलोड हो गई':'CSV downloaded');
+}
+function downloadMockPDF() {
+  showToast(state.lang==='hi'?'रिपोर्ट डाउनलोड हो रही है...':'Downloading report...');
+  setTimeout(() => closeModal('auditReportModal'), 1200);
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.remove('hidden');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+}
+
+/* ============================================================
+   EVENT BINDINGS
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Language
+  document.getElementById('langEn').addEventListener('click', () => { state.lang='en'; applyLanguage(); });
+  document.getElementById('langHi').addEventListener('click', () => { state.lang='hi'; applyLanguage(); });
+  // Theme
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    state.theme = state.theme === 'light' ? 'dark' : 'light';
+    applyTheme(); renderCharts();
+  });
+  // Roles
+  document.querySelectorAll('[data-role]').forEach(btn => {
+    btn.addEventListener('click', () => switchRole(btn.dataset.role));
+  });
+  document.getElementById('mobileRoleBtn').addEventListener('click', () => {
+    document.getElementById('mobileRoleMenu').classList.toggle('hidden');
+  });
+  // Table filters
+  document.getElementById('tableSearch').addEventListener('input', renderAnomalyTable);
+  document.getElementById('tableSeverity').addEventListener('change', renderAnomalyTable);
+  // Grievance form
+  document.getElementById('grievanceForm').addEventListener('submit', e => {
+    e.preventDefault();
+    closeModal('grievanceModal');
+    showToast(state.lang==='hi'?'शिकायत गुमनाम रूप से जमा हो गई':'Grievance submitted anonymously');
+    e.target.reset();
+  });
+  // Modal backdrop click
+  document.querySelectorAll('.modal-backdrop').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'), m.classList.remove('flex'); });
+  });
+
+  // Initial render
+  applyTheme();
+  switchRole('mospi');
+  applyLanguage();
+  initMap();
+  if (window.lucide) lucide.createIcons();
+
+  // Live clock
+  setInterval(() => {
+    const now = new Date();
+    const opts = { weekday:'short', day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false };
+    document.getElementById('roleTimestamp').textContent = now.toLocaleString('en-IN', opts) + ' IST';
+  }, 60000);
+});
+</script>
+</body>
+</html>
