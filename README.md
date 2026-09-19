@@ -22,7 +22,7 @@
 - Firebase-ready architecture
 
 ## 🚀 Live Demo
-👉 https://YOUR_USERNAME.github.io/mplads-drishti/
+👉 https://ziniaagnihotri.github.io/mplads-drishti/mplads-drishti.html
 
 ## 👥 Team
 - [Your Name] — [Role]
